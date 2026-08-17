@@ -31,7 +31,8 @@ describe('MeasuresControl', () => {
 		ctrl = new MeasuresControl({ units: 'metric' });
 		map = {
 			addControl: vi.fn(),
-			on: vi.fn(),
+			removeControl: vi.fn(),
+			on: vi.fn((...args)=>{console.log(...args)}),
 			off: vi.fn(),
 			remove: vi.fn(),
 			getStyle: vi.fn(() => ({ layers: [] })),
@@ -117,11 +118,20 @@ describe('MeasuresControl', () => {
 	it('registers map events', () => {
 		ctrl.onAdd(map);
 		expect(map.on).toHaveBeenCalledWith('load', expect.any(Function));
-		expect(map.on).toHaveBeenCalledWith('draw.create', expect.any(Function));
-		expect(map.on).toHaveBeenCalledWith('draw.update', expect.any(Function));
-		expect(map.on).toHaveBeenCalledWith('draw.delete', expect.any(Function));
-		expect(map.on).toHaveBeenCalledWith('draw.render', expect.any(Function));
+		expect(map.on).toHaveBeenCalledWith('draw.create', ctrl._handleOnCreate);
+		expect(map.on).toHaveBeenCalledWith('draw.update', ctrl._handleOnUpdate);
+		expect(map.on).toHaveBeenCalledWith('draw.delete', ctrl._handleOnDelete);
+		expect(map.on).toHaveBeenCalledWith('draw.render', ctrl._handleOnRender);
 	});
+
+	it('unregisters map events on removal', () => {
+		ctrl.onAdd(map);	
+		ctrl.onRemove(map);
+		expect(map.off).toHaveBeenCalledWith('draw.create', ctrl._handleOnCreate);
+		expect(map.off).toHaveBeenCalledWith('draw.update', ctrl._handleOnUpdate);
+		expect(map.off).toHaveBeenCalledWith('draw.delete', ctrl._handleOnDelete);
+		expect(map.off).toHaveBeenCalledWith('draw.render', ctrl._handleOnRender);
+	})
 
 	it('handles onRender and onCreate callbacks', () => {
 		const onRender = vi.fn();
@@ -129,6 +139,7 @@ describe('MeasuresControl', () => {
 		ctrl.options.onRender = onRender;
 		ctrl.options.onCreate = onCreate;
 
+		ctrl._updateLabels = vi.fn();
 		ctrl._handleOnRender();
 		expect(onRender).toHaveBeenCalled();
 

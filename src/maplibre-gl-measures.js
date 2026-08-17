@@ -12,6 +12,13 @@ const SOURCE_DATA = {
 export default class MeasuresControl {
 	constructor(options) {
 		this.options = options;
+
+		// Event handlers are always bound to this instance.
+		this._handleOnCreate = this._handleOnCreate.bind(this);
+		this._handleOnDelete = this._handleOnDelete.bind(this);
+		this._handleOnRender = this._handleOnRender.bind(this);
+		this._handleOnUpdate = this._handleOnUpdate.bind(this);
+
 		this._drawCtrl = new MapboxDraw({
 			displayControlsDefault: false,
 			styles: [
@@ -313,19 +320,21 @@ export default class MeasuresControl {
 			this._map.on('load', () => {
 				this._recreateSourceAndLayers();
 			});
-			this._map.on('draw.create', () => {
-				this._updateLabels();
-				this._handleOnCreate();
-			});
-			this._map.on('draw.update', this._updateLabels.bind(this));
-			this._map.on('draw.delete', this._updateLabels.bind(this));
-			this._map.on('draw.render', () => {
-				this._updateLabels();
-				this._handleOnRender();
-			});
+			this._map.on('draw.create', this._handleOnCreate);
+			this._map.on('draw.update', this._handleOnUpdate);
+			this._map.on('draw.delete', this._handleOnDelete);
+			this._map.on('draw.render', this._handleOnRender);
 		}
 	}
 
+	_unregisterEvents() {
+		if (this._map) {
+			this._map.off('draw.create', this._handleOnCreate);
+			this._map.off('draw.update', this._handleOnUpdate);
+			this._map.off('draw.delete', this._handleOnDelete);
+			this._map.off('draw.render', this._handleOnRender);
+		}
+	}
 	_recreateSourceAndLayers() {
 		if (!this._map.getSource(DRAW_LABELS_SOURCE_ID))
 			this._map.addSource(DRAW_LABELS_SOURCE_ID, {
@@ -387,6 +396,7 @@ export default class MeasuresControl {
 	 * Handles the optional onRender callback provided in the options
 	 */
 	_handleOnRender() {
+		this._updateLabels();
 		if (this.options && this.options.onRender !== null && this.options.onRender !== undefined && this.options.onRender instanceof Function) {
 			const features = this._getDrawnFeatures();
 			// Pass drawn features to callback
@@ -402,6 +412,7 @@ export default class MeasuresControl {
 	 * Handles the optional onCreate callback provided in the options
 	 */
 	_handleOnCreate() {
+		this._updateLabels();
 		if (this.options && this.options.onCreate !== null && this.options.onCreate !== undefined && this.options.onCreate instanceof Function) {
 			const features = this._getDrawnFeatures();
 			// Pass drawn features to callback
@@ -411,6 +422,14 @@ export default class MeasuresControl {
 				console.error(e);
 			}
 		}
+	}
+
+	_handleOnDelete() {
+		this._updateLabels()
+	}
+
+	_handleOnUpdate() {
+		this._updateLabels()
 	}
 
 	_updateLabels() {
@@ -479,7 +498,8 @@ export default class MeasuresControl {
 	}
 
 	onRemove() {
-		this._container.parentNode.removeChild(this._container);
+		this._unregisterEvents();
+		this._container.remove();
 		this._map.removeLayer(DRAW_LABELS_LAYER_ID);
 		this._map = undefined;
 	}
