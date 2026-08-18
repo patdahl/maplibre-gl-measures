@@ -26,8 +26,10 @@ vi.mock('@turf/turf', () => ({
 describe('MeasuresControl', () => {
 	let ctrl;
 	let map;
+	let mapLoaded;
 
 	beforeEach(() => {
+		mapLoaded = false;
 		ctrl = new MeasuresControl({ units: 'metric' });
 		map = {
 			addControl: vi.fn(),
@@ -43,6 +45,7 @@ describe('MeasuresControl', () => {
 			moveLayer: vi.fn(),
 			removeLayer: vi.fn(),
 			removeSource: vi.fn(),
+			loaded: vi.fn(()=>mapLoaded)
 		};
 	});
 
@@ -111,13 +114,13 @@ describe('MeasuresControl', () => {
 		// Manually append to body to test removal
 		document.body.appendChild(ctrl._container);
 		ctrl.onRemove();
+		expect(map.removeControl).toHaveBeenCalledWith(ctrl._drawCtrl);
 		expect(document.body.contains(ctrl._container)).toBe(false);
 		expect(map.removeLayer).toHaveBeenCalled();
 	});
 
 	it('registers map events', () => {
 		ctrl.onAdd(map);
-		expect(map.on).toHaveBeenCalledWith('load', expect.any(Function));
 		expect(map.on).toHaveBeenCalledWith('draw.create', ctrl._handleOnCreate);
 		expect(map.on).toHaveBeenCalledWith('draw.update', ctrl._handleOnUpdate);
 		expect(map.on).toHaveBeenCalledWith('draw.delete', ctrl._handleOnDelete);
@@ -185,9 +188,21 @@ describe('MeasuresControl', () => {
 		expect(features.features.length).toBe(1);
 	});
 
-	it('recreates source and layers', () => {
+	it('adds listener to recreate sources and layers when map is not yet loaded', ()=>{
+		mapLoaded = false;
 		ctrl.onAdd(map);
-		ctrl._recreateSourceAndLayers();
+		expect(map.on).toHaveBeenCalledWith('load', expect.any(Function));
+	})
+
+	in('directly ensures sources and layers exist when map is already loaded', ()=>{
+		mapLoaded = true;
+		ctrl.onAdd(map);
+		expect(ctrl._recreateSourceAndLayers).toHaveBeenCalled();
+	})
+
+	it('recreates source and layers', () => {
+		mapLoaded = true;
+		ctrl.onAdd(map);
 		expect(map.addSource).toHaveBeenCalled();
 		expect(map.addLayer).toHaveBeenCalled();
 	});

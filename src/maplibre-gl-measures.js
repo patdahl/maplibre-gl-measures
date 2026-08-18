@@ -142,6 +142,15 @@ export default class MeasuresControl {
 
 	onAdd(map) {
 		this._map = map;
+		// Ensure source and layers exist
+		if (map.loaded()) {
+			// if map is loaded, call directly, otherwise it won't get called
+			this._recreateSourceAndLayers()
+		} else {
+			map.on('load', ()=>{
+				this._recreateSourceAndLayers()
+			})
+		}
 		this._map.addControl(this._drawCtrl, 'top-left');
 		this._initControl();
 		this._registerEvents();
@@ -317,9 +326,6 @@ export default class MeasuresControl {
 
 	_registerEvents() {
 		if (this._map) {
-			this._map.on('load', () => {
-				this._recreateSourceAndLayers();
-			});
 			this._map.on('draw.create', this._handleOnCreate);
 			this._map.on('draw.update', this._handleOnUpdate);
 			this._map.on('draw.delete', this._handleOnDelete);
@@ -335,6 +341,7 @@ export default class MeasuresControl {
 			this._map.off('draw.render', this._handleOnRender);
 		}
 	}
+	
 	_recreateSourceAndLayers() {
 		if (!this._map.getSource(DRAW_LABELS_SOURCE_ID))
 			this._map.addSource(DRAW_LABELS_SOURCE_ID, {
@@ -498,7 +505,13 @@ export default class MeasuresControl {
 	}
 
 	onRemove() {
+		// clean up event listeners
 		this._unregisterEvents();
+		
+		// Even if it is not visible, remove _drawCtrl
+		// from map to ensure proper clean up.
+		this._map.removeControl(this._drawCtrl);
+
 		this._container.remove();
 		this._map.removeLayer(DRAW_LABELS_LAYER_ID);
 		this._map = undefined;
