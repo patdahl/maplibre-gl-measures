@@ -34,7 +34,7 @@ describe('MeasuresControl', () => {
 		map = {
 			addControl: vi.fn(),
 			removeControl: vi.fn(),
-			on: vi.fn((...args)=>{console.log(...args)}),
+			on: vi.fn(),
 			off: vi.fn(),
 			remove: vi.fn(),
 			getStyle: vi.fn(() => ({ layers: [] })),
